@@ -23,7 +23,7 @@ logging.set_verbosity(logging.INFO)  # Set default logging level.
 
 _trainer_module_file = 'trainer.py'
 
-
+# Tigger the pipline
 tfx.orchestration.LocalDagRunner().run(
     create_pipeline(
         pipeline_name=PIPELINE_NAME,

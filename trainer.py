@@ -1,3 +1,5 @@
+%%writefile {_trainer_module_file}
+
 from typing import List
 from absl import logging
 import tensorflow as tf

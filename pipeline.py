@@ -53,10 +53,10 @@ def create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
     components = [
         csv_component,
         statistics_component,
-        schema_component,
-        trainer_component,
-        evaluator_component,
-        pusher_component,
+        # schema_component,
+        # trainer_component,
+        # evaluator_component,
+        # pusher_component,
     ]
 
     return tfx.orchestration.pipeline.Pipeline(

@@ -3,6 +3,7 @@ print('TensorFlow version: {}'.format(tf.__version__))
 import tfx
 print('TFX version: {}'.format(tfx.__version__))
 
+import tensorflow_model_analysis as tfma
 
 def create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
                      module_file: str, serving_model_dir: str,
@@ -35,14 +36,52 @@ def create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
 
 
     # Evaluates the model
+
+    eval_config = tfma.EvalConfig(
+    model_specs=[
+        # This assumes a serving model with signature 'serving_default'. If
+        # using estimator based EvalSavedModel, add signature_name='eval' and
+        # remove the label_key. Note, if using a TFLite model, then you must set
+        # model_type='tf_lite'.
+        tfma.ModelSpec(label_key='<label_key>')
+    ],
+    metrics_specs=[
+        tfma.MetricsSpec(
+            # The metrics added here are in addition to those saved with the
+            # model (assuming either a keras model or EvalSavedModel is used).
+            # Any metrics added into the saved model (for example using
+            # model.compile(..., metrics=[...]), etc) will be computed
+            # automatically.
+            metrics=[
+                tfma.MetricConfig(class_name='ExampleCount'),
+                tfma.MetricConfig(
+                    class_name='BinaryAccuracy',
+                    threshold=tfma.MetricThreshold(
+                        value_threshold=tfma.GenericValueThreshold(
+                            lower_bound={'value': 0.5}),
+                        change_threshold=tfma.GenericChangeThreshold(
+                            direction=tfma.MetricDirection.HIGHER_IS_BETTER,
+                            absolute={'value': -1e-10})))
+            ]
+        )
+    ],
+    slicing_specs=[
+        # An empty slice spec means the overall slice, i.e. the whole dataset.
+        tfma.SlicingSpec(),
+        # Data can be sliced along a feature column. In this case, data is
+        # sliced along feature column trip_start_hour.
+        tfma.SlicingSpec(feature_keys=['trip_start_hour'])
+    ])
+
     evaluator_component = tfx.components.Evaluator(
         examples=csv_component.outputs['examples'],
-        model=trainer.outputs['model']
+        model=trainer_component.outputs['model'],
+        eval_config=eval_config
     )
 
     # Push model to production
     pusher_component = tfx.components.Pusher(
-        model=trainer.outputs['model'],
+        model=trainer_component.outputs['model'],
         push_destination=tfx.proto.pusher_pb2.PushDestination(
             filesystem=tfx.proto.pusher_pb2.PushDestination.Filesystem(
                 base_directory=serving_model_dir
